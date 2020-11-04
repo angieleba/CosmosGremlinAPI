@@ -30,7 +30,7 @@ namespace WebAPIExample.Controllers
 
 
         [HttpGet("follows")]
-        public async Task GetUser()
+        public async Task<dynamic> GetUser()
         {
             var g = AnonymousTraversalSource.Traversal();
             GremlinQuery q = g.V()
@@ -41,29 +41,31 @@ namespace WebAPIExample.Controllers
 
             var queryRes = await gremlinService.ExecuteGremlinQuery<dynamic>(q);
             var deserialized = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeObject(queryRes));
+            return deserialized;
         }
 
 
         [HttpGet("topBookmarks")]
-        public async Task getTopBookmarkedProducts()
+        public async Task<dynamic> getTopBookmarkedProducts()
         {
             var g = AnonymousTraversalSource.Traversal();
             GremlinQuery q = g.V()
                 .HasLabel("product")
                 .Group<dynamic, dynamic>()
-                .By()
+                .By(__.Values<dynamic>("title"))
                 .By(__.OutE().HasLabel("is bookmarked by").InV().HasLabel("person").Count())
-                .Order(Scope.Local).By(Column.Values, Order.Decr)
+                .Order(Scope.Local).By(Column.Values, Order.Decr).Limit<dynamic>(Scope.Local, 3)
                
                 .ToGremlinQuery();
 
             var queryRes = await gremlinService.ExecuteGremlinQuery<dynamic>(q);
             var deserialized = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeObject(queryRes));
+            return deserialized;
         }
 
 
         [HttpGet("userFollowers")]
-        public async Task getUsersAndFollowers()
+        public async Task<dynamic> getUsersAndFollowers()
         {
             var g = AnonymousTraversalSource.Traversal();
             GremlinQuery q = g.V()
@@ -77,11 +79,12 @@ namespace WebAPIExample.Controllers
 
             var queryRes = await gremlinService.ExecuteGremlinQuery<dynamic>(q);
             var deserialized = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeObject(queryRes));
+            return deserialized;
         }
 
 
         [HttpGet("userProducts")]
-        public async Task getTop5UsersWithPublishedProducts()
+        public async Task<dynamic> getTop5UsersWithPublishedProducts()
         {
             var g = AnonymousTraversalSource.Traversal();
             GremlinQuery q = g.V()
@@ -95,95 +98,34 @@ namespace WebAPIExample.Controllers
 
             var queryRes = await gremlinService.ExecuteGremlinQuery<dynamic>(q);
             var deserialized = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeObject(queryRes));
+            return deserialized;
         }
 
 
-        [HttpGet("topUsersTopProducts")]
-        public async Task topUsersTopProducts()
+        [HttpGet("usersTopBookmarkedProducts")]
+        public async Task<dynamic> topUsersTopProducts()
         {
             var g = AnonymousTraversalSource.Traversal();
             GremlinQuery q = g.V()
                 .HasLabel("person")
                 .Group<dynamic, dynamic>()
-                .By()
-                .By(__.OutE().HasLabel("published").InV().HasLabel("product")
-                    .Project<dynamic>("title", "bookmarkers")
-                    .By(__.Values<dynamic>("title"))
-                    .By(__.OutE().HasLabel("is bookmarked by").InV().HasLabel("person").Count())
-                    )
+                .By(__.Values<dynamic>("firstName"))
+                .By(__.OutE().HasLabel("published")
+                    .Group<dynamic, dynamic>()
+                    .By(__.InV().HasLabel("product"))
+                    .By(__.InV().HasLabel("product").OutE().HasLabel("is bookmarked by").Count())
+                    .Order(Scope.Local).By(Column.Values, Order.Decr).Limit<dynamic>(Scope.Local, 5)
+                    .Unfold<dynamic>()
+                    .Project<dynamic>("title", new string[] { "bookmarks" })
+                    .By(__.Select<dynamic>(Column.Keys).Unfold<dynamic>().Values<string>("title"))
+                    .By(__.Select<dynamic>(Column.Values).Unfold<dynamic>()).Fold()                   
+                )
                 .ToGremlinQuery();
 
             var queryRes = await gremlinService.ExecuteGremlinQuery<dynamic>(q);
-            var deserialized = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeObject(queryRes));
-        }
-
-
-        [HttpGet("accountsThatFollowEachOther")]
-        public async Task getAccounts()
-        {
-            var g = AnonymousTraversalSource.Traversal();
-            GremlinQuery q = g.V()             
-                .HasLabel("person")
-                .Group<dynamic, dynamic>()
-                .By()
-                .By(__.OutE().HasLabel("is followed by").InV().HasLabel("person").Count())
-                .Order(Scope.Local).By(Column.Values, Order.Decr)
-                .ToGremlinQuery();
-
-            var queryRes = await gremlinService.ExecuteGremlinQuery<dynamic>(q);
-            var deserialized = JsonConvert.DeserializeObject<dynamic>(JsonConvert.SerializeObject(queryRes));
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // GET api/values
-        [HttpGet]
-        public ActionResult<IEnumerable<string>> Get()
-        {
-            return new string[] { "value1", "value2" };
-        }
-
-        // GET api/values/5
-        [HttpGet("{id}")]
-        public ActionResult<string> Get(int id)
-        {
-            return "value";
-        }
-
-        // POST api/values
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
-
-        // PUT api/values/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/values/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            var qq = JsonConvert.SerializeObject(queryRes);
+            var deserialized = JsonConvert.DeserializeObject<dynamic>(qq);
+            return deserialized;
         }
     }
 }

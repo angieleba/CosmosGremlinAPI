@@ -12,7 +12,7 @@
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
-      "launchUrl": "api/gremlin",
+      "launchUrl": "api/gremlin/follows",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
